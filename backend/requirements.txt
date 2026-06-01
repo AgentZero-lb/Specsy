@@ -1,0 +1,12 @@
+httpx
+selectolax
+beautifulsoup4
+fastapi
+uvicorn
+supabase==2.7.4
+python-dotenv
+anthropic
+pgvector
+psycopg2-binary
+playwright
+schedule

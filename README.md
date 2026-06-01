@@ -1,0 +1,47 @@
+# Specsy
+
+PCPartPicker for Lebanon — compare PC part prices across Lebanese shops in USD and LBP.
+
+## Stack
+
+| Layer | Tech |
+|---|---|
+| Frontend | Next.js 14, TypeScript, Tailwind CSS, shadcn/ui |
+| Backend | Python 3.11, FastAPI |
+| Scraper | httpx + selectolax (one module per shop) |
+| Database | PostgreSQL + pgvector via Supabase |
+| AI | Claude API — Haiku (classification) · Sonnet (builds + chat) |
+| Deploy | Vercel (frontend) · Railway/VPS (backend + scrapers) |
+
+## Getting started
+
+### 1. Probe the data source
+
+```bash
+cd backend
+pip install -r requirements.txt
+python scraper/probe.py
+```
+
+This confirms whether the WooCommerce Store API on PCandParts is publicly accessible. If it returns products, the scraper can use the API. If not, it falls back to HTML scraping.
+
+### 2. Run the API
+
+```bash
+cd backend
+uvicorn api.main:app --reload
+# GET http://localhost:8000/health
+```
+
+### 3. Run the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+# http://localhost:3000
+```
+
+## Environment
+
+Copy `.env.example` to `.env` and fill in your Supabase and Anthropic credentials.
