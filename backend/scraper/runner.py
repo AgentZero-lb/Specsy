@@ -119,16 +119,17 @@ def run_save(shop):
             "last_seen_at":  "now()",
         })
 
-    upserted = upsert_listings(sb, shop_id, rows)
+    upserted_rows = upsert_listings(sb, shop_id, rows)
 
-    # write price snapshot for every listing this run
-    upsert_price_snapshots(sb, run_id, rows)
+    # one price snapshot per listing, using ids from the upsert (no row cap)
+    snapshots = upsert_price_snapshots(sb, run_id, upserted_rows)
 
     finish_scrape_run(sb, run_id, "ok",
                       products_found=len(listings),
-                      products_upserted=upserted)
+                      products_upserted=len(upserted_rows))
 
-    print(f"\nDone. {len(listings)} fetched, {upserted} upserted.")
+    print(f"\nDone. {len(listings)} fetched, {len(upserted_rows)} upserted, "
+          f"{snapshots} snapshots.")
 
 
 if __name__ == "__main__":

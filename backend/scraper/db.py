@@ -51,10 +51,10 @@ def finish_scrape_run(
     ).eq("id", run_id).execute()
 
 
-def upsert_listings(sb: Client, shop_id: str, listings: list[dict]) -> int:
-    """Upsert in batches of 500, return total rows upserted."""
+def upsert_listings(sb: Client, shop_id: str, listings: list[dict]) -> list[dict]:
+    """Upsert in batches of 500; return the upserted rows (each incl. its `id`)."""
     BATCH = 500
-    total = 0
+    rows: list[dict] = []
     for i in range(0, len(listings), BATCH):
         batch = listings[i : i + BATCH]
         result = (
@@ -62,38 +62,33 @@ def upsert_listings(sb: Client, shop_id: str, listings: list[dict]) -> int:
             .upsert(batch, on_conflict="shop_id,product_url")
             .execute()
         )
-        total += len(result.data)
-    return total
+        rows.extend(result.data)
+    return rows
 
 
-def upsert_price_snapshots(sb: Client, run_id: str, listing_rows: list[dict]):
-    """After upserting listings, fetch their IDs and write price_snapshots."""
-    # fetch listing IDs for this run
-    result = (
-        sb.table("listings")
-        .select("id, product_url, price_raw, currency, price_usd, in_stock")
-        .eq("scrape_run_id", run_id)
-        .execute()
-    )
-    listing_map = {r["product_url"]: r for r in result.data}
+def upsert_price_snapshots(sb: Client, run_id: str, upserted_rows: list[dict]) -> int:
+    """Write one price_snapshot per upserted listing; return the count.
 
-    snapshots = []
-    for row in listing_rows:
-        listing = listing_map.get(row["product_url"])
-        if not listing:
-            continue
-        snapshots.append({
-            "listing_id":    listing["id"],
+    Builds snapshots from the rows returned by upsert_listings (which already
+    carry their `id`), so it is NOT subject to PostgREST's default ~1000-row
+    cap that a re-fetch by scrape_run_id would silently hit.
+    """
+    snapshots = [
+        {
+            "listing_id":    r["id"],
             "scrape_run_id": run_id,
-            "price_raw":     listing["price_raw"],
-            "currency":      listing["currency"],
-            "price_usd":     listing["price_usd"],
-            "in_stock":      listing["in_stock"],
-        })
+            "price_raw":     r["price_raw"],
+            "currency":      r["currency"],
+            "price_usd":     r["price_usd"],
+            "in_stock":      r["in_stock"],
+        }
+        for r in upserted_rows
+    ]
 
     BATCH = 500
     for i in range(0, len(snapshots), BATCH):
         sb.table("price_snapshots").insert(snapshots[i : i + BATCH]).execute()
+    return len(snapshots)
 
 
 def get_today_rate(sb: Client) -> Optional[float]:
