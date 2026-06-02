@@ -21,6 +21,7 @@ class ListingOut(BaseModel):
     price_raw: Optional[float]
     currency: str
     in_stock: bool
+    last_seen_at: Optional[str]
     product_url: str
     image_url: Optional[str]
     category_slug: Optional[str]
@@ -46,6 +47,8 @@ def list_listings(
     in_stock: Optional[bool] = Query(None, description="Filter by stock status"),
     has_price: Optional[bool] = Query(None, description="True = priced only, False = Request Price only"),
     q: Optional[str] = Query(None, description="Search by name (case-insensitive)"),
+    sort: str = Query("name", pattern="^(name|price_asc|price_desc)$",
+                      description="Sort order. price_* should be paired with has_price=true to exclude Request-Price items."),
     page: int = Query(1, ge=1),
     limit: int = Query(48, ge=1, le=200),
     sb: Client = Depends(get_supabase),
@@ -54,7 +57,7 @@ def list_listings(
 
     query = (
         sb.table("listings")
-        .select("id, raw_name, sku, price_usd, price_raw, currency, in_stock, product_url, image_url, category_slug, shops(slug, name, url)", count="exact")
+        .select("id, raw_name, sku, price_usd, price_raw, currency, in_stock, last_seen_at, product_url, image_url, category_slug, shops(slug, name, url)", count="exact")
     )
 
     if category:
@@ -68,7 +71,14 @@ def list_listings(
     if q:
         query = query.ilike("raw_name", f"%{q}%")
 
-    result = query.order("raw_name").range(offset, offset + limit - 1).execute()
+    if sort == "price_asc":
+        query = query.order("price_usd", desc=False, nullsfirst=False)
+    elif sort == "price_desc":
+        query = query.order("price_usd", desc=True, nullsfirst=False)
+    else:  # "name"
+        query = query.order("raw_name")
+
+    result = query.range(offset, offset + limit - 1).execute()
 
     items = []
     for row in result.data:
@@ -102,7 +112,7 @@ def list_categories(sb: Client = Depends(get_supabase)):
 def get_listing(listing_id: str, sb: Client = Depends(get_supabase)):
     result = (
         sb.table("listings")
-        .select("id, raw_name, sku, price_usd, price_raw, currency, in_stock, product_url, image_url, category_slug, shops(slug, name, url)")
+        .select("id, raw_name, sku, price_usd, price_raw, currency, in_stock, last_seen_at, product_url, image_url, category_slug, shops(slug, name, url)")
         .eq("id", listing_id)
         .maybe_single()
         .execute()

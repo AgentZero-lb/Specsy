@@ -1,26 +1,73 @@
 @import "tailwindcss";
 
+/* ───────────────────────────────────────────────
+   Specsy design tokens — dark-first "premium tech"
+   Tailwind v4: tokens here generate utilities, e.g.
+   --color-surface → bg-surface / text-surface / border-surface
+   ─────────────────────────────────────────────── */
+@theme {
+  /* Layered surfaces (never pure #000) */
+  --color-base: #050506;
+  --color-surface: #0a0a0c;
+  --color-elevated: #111114;
+
+  /* Hairline / specular borders */
+  --color-hairline: rgba(255, 255, 255, 0.06);
+  --color-hairline-strong: rgba(255, 255, 255, 0.1);
+
+  /* Text */
+  --color-foreground: #ededf0;
+  --color-muted: #a1a1aa; /* zinc-400 */
+  --color-faint: #71717a; /* zinc-500 */
+
+  /* Accent — electric indigo (the ONE accent) */
+  --color-accent: #6366f1;
+  --color-accent-soft: #818cf8;
+  --color-accent-foreground: #ffffff;
+
+  /* Semantic */
+  --color-success: #22c55e; /* in stock */
+  --color-warning: #f59e0b; /* amber — Request Price */
+
+  /* Fonts (variables injected by next/font in layout.tsx) */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  /* Corner radii — 12 cards · 8 buttons/inputs · 20 hero */
+  --radius-card: 12px;
+  --radius-btn: 8px;
+  --radius-hero: 20px;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-base);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Faint dot-grid texture — apply with class="bg-dot-grid" over a dark surface */
+.bg-dot-grid {
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.05) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+/* Respect reduced-motion globally for CSS-driven animation/transition */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
