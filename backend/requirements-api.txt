@@ -1,0 +1,6 @@
+# Slim deps for the deployed API service only (no scraper/playwright/db tooling).
+# Keeps the Render build fast. The full requirements.txt is for local scraping.
+fastapi
+uvicorn[standard]
+supabase==2.7.4
+python-dotenv

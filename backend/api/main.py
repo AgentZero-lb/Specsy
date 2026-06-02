@@ -6,10 +6,12 @@ app = FastAPI(title="Specsy API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://*.vercel.app",
-    ],
+    # Exact origins for local dev; regex covers every Vercel deployment
+    # (production + preview URLs like https://specsy-xyz.vercel.app).
+    # Note: Starlette does NOT expand "https://*.vercel.app" as a wildcard —
+    # it must be a regex, hence allow_origin_regex below.
+    allow_origins=["http://localhost:3000"],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

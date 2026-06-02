@@ -1,0 +1,21 @@
+# Render Blueprint — deploys the Specsy FastAPI backend.
+# In the Render dashboard: New → Blueprint → pick the AgentZero-lb/Specsy repo.
+# Render reads this file automatically. Set the two secret env vars in the UI.
+services:
+  - type: web
+    name: specsy-api
+    runtime: python
+    plan: free
+    branch: master
+    rootDir: backend
+    buildCommand: pip install -r requirements-api.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      # Secrets — set these in the Render dashboard (sync: false = not in git).
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
