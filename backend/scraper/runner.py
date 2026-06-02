@@ -1,26 +1,43 @@
 """
-Usage:
-    python scraper/runner.py              # dry-run: fetch + print stats, no DB writes
-    python scraper/runner.py --save       # fetch + upsert to Supabase (needs .env)
+Usage (run from the backend/ directory):
+    python -m scraper.runner [shop]            # dry-run: fetch + print stats, no DB writes
+    python -m scraper.runner [shop] --save     # fetch + upsert to Supabase (needs .env)
+
+    [shop] defaults to 'pcandparts'.
+    Available shops: pcandparts, macrotronics
 """
 
 import argparse
+import importlib
 import sys
-from scraper.shops.pcandparts import fetch_all, SHOP_META
+
+# slug -> module path. Each module must expose `fetch_all()` and `SHOP_META`.
+SHOPS = {
+    "pcandparts":   "scraper.shops.pcandparts",
+    "macrotronics": "scraper.shops.macrotronics",
+}
 
 
-def run_dry():
-    print("=== DRY RUN - PCandParts ===\n")
-    listings = fetch_all(verbose=True)
+def load_shop(slug: str):
+    if slug not in SHOPS:
+        print(f"Unknown shop '{slug}'. Available: {', '.join(SHOPS)}")
+        sys.exit(2)
+    return importlib.import_module(SHOPS[slug])
+
+
+def run_dry(shop):
+    name = shop.SHOP_META["name"]
+    print(f"=== DRY RUN - {name} ===\n")
+    listings = shop.fetch_all(verbose=True)
 
     if not listings:
         print("\nABORTED: 0 products returned. Not safe to overwrite DB.")
         sys.exit(1)
 
-    priced      = [l for l in listings if l.price_raw is not None]
-    req_price   = [l for l in listings if l.price_raw is None]
-    in_stock    = [l for l in listings if l.in_stock]
-    no_sku      = [l for l in listings if l.sku is None]
+    priced       = [l for l in listings if l.price_raw is not None]
+    req_price    = [l for l in listings if l.price_raw is None]
+    in_stock     = [l for l in listings if l.in_stock]
+    no_sku       = [l for l in listings if l.sku is None]
     out_of_scope = [l for l in listings if l.category_slug is None]
 
     cats: dict[str, int] = {}
@@ -42,7 +59,7 @@ def run_dry():
     print("\nDry run complete. Run with --save to write to DB.")
 
 
-def run_save():
+def run_save(shop):
     from scraper.db import (
         get_client,
         ensure_shop,
@@ -50,18 +67,20 @@ def run_save():
         finish_scrape_run,
         upsert_listings,
         get_today_rate,
+        upsert_price_snapshots,
     )
 
-    print("=== SCRAPE + SAVE - PCandParts ===\n")
+    name = shop.SHOP_META["name"]
+    print(f"=== SCRAPE + SAVE - {name} ===\n")
     sb = get_client()
 
-    shop_id = ensure_shop(sb, SHOP_META)
+    shop_id = ensure_shop(sb, shop.SHOP_META)
     run_id  = start_scrape_run(sb, shop_id)
     print(f"Shop ID   : {shop_id}")
     print(f"Run ID    : {run_id}\n")
 
     try:
-        listings = fetch_all(verbose=True)
+        listings = shop.fetch_all(verbose=True)
     except Exception as e:
         finish_scrape_run(sb, run_id, "failed", error=str(e))
         print(f"\nERROR: {e}")
@@ -103,7 +122,6 @@ def run_save():
     upserted = upsert_listings(sb, shop_id, rows)
 
     # write price snapshot for every listing this run
-    from scraper.db import upsert_price_snapshots
     upsert_price_snapshots(sb, run_id, rows)
 
     finish_scrape_run(sb, run_id, "ok",
@@ -115,11 +133,14 @@ def run_save():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("shop", nargs="?", default="pcandparts",
+                        help="Shop slug: " + ", ".join(SHOPS))
     parser.add_argument("--save", action="store_true",
                         help="Write results to Supabase (requires .env)")
     args = parser.parse_args()
 
+    shop = load_shop(args.shop)
     if args.save:
-        run_save()
+        run_save(shop)
     else:
-        run_dry()
+        run_dry(shop)
