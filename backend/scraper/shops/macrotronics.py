@@ -3,6 +3,8 @@ import httpx
 from dataclasses import dataclass
 from typing import Callable, Optional
 
+from scraper.scope import apply_scope
+
 API_BASE = "https://www.macrotronics.net/products.json"
 SHOP_URL = "https://www.macrotronics.net"
 HEADERS = {
@@ -118,11 +120,12 @@ class Listing:
 def _category_for(product_type: str, title: str) -> Optional[str]:
     pt = product_type or ""
     if pt in CATEGORY_MAP:
-        return CATEGORY_MAP[pt]
-    refiner = AMBIGUOUS.get(pt)
-    if refiner:
-        return refiner(title.lower())
-    return None  # unknown product_type → treat as out of scope
+        slug = CATEGORY_MAP[pt]
+    else:
+        refiner = AMBIGUOUS.get(pt)  # unknown product_type → None
+        slug = refiner(title.lower()) if refiner else None
+    # Final gate: drop accessories/cabling leaking in via broad shop buckets.
+    return apply_scope(slug, title)
 
 
 def _parse(p: dict) -> Listing:

@@ -27,6 +27,11 @@ export function BrowseClient({ categories }: { categories: CategoryCount[] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => a.name.localeCompare(b.name)),
+    [categories],
+  );
+
   // URL is the source of truth for server-affecting filters
   const category = searchParams.get("category");
   const inStock = searchParams.get("in_stock") === "true";
@@ -149,7 +154,7 @@ export function BrowseClient({ categories }: { categories: CategoryCount[] }) {
     (category ? 1 : 0) + (inStock ? 1 : 0) + (hasPrice ? 1 : 0);
 
   const filters = (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 pb-8">
       {/* Search */}
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
@@ -225,7 +230,7 @@ export function BrowseClient({ categories }: { categories: CategoryCount[] }) {
           active={!category}
           onClick={() => updateParams({ category: null })}
         />
-        {categories.map((c) => (
+        {sortedCategories.map((c) => (
           <CategoryButton
             key={c.slug}
             label={c.name}
@@ -274,8 +279,8 @@ export function BrowseClient({ categories }: { categories: CategoryCount[] }) {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[280px_1fr]">
         {/* Desktop rail */}
-        <aside className="hidden lg:block">
-          <div className="sticky top-24">{filters}</div>
+        <aside className="hidden lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto">
+          {filters}
         </aside>
 
         {/* Results */}

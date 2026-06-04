@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Listing } from "@/lib/types";
 import { formatUSD, isRequestPrice } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/category-icon";
+import { ProductCardImage } from "@/components/product-card-image";
 import { cn } from "@/lib/utils";
 
 export function ProductCard({ listing }: { listing: Listing }) {
@@ -16,12 +16,10 @@ export function ProductCard({ listing }: { listing: Listing }) {
     >
       <div className="relative aspect-square overflow-hidden bg-base">
         {listing.image_url ? (
-          <Image
+          <ProductCardImage
             src={listing.image_url}
             alt={listing.raw_name}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
+            categorySlug={listing.category_slug}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">

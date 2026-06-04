@@ -14,8 +14,17 @@ export const metadata: Metadata = {
 // Catalog refreshes every 12h, so cache homepage data for the same window.
 const CACHE: RequestInit = { next: { revalidate: 43_200 } };
 
+const FEATURED_CATEGORIES = [
+  { slug: "gpu", label: "Graphics Cards" },
+  { slug: "cpu", label: "Processors" },
+  { slug: "ram", label: "Memory" },
+  { slug: "storage", label: "Storage" },
+  { slug: "monitor", label: "Monitors" },
+  { slug: "laptop", label: "Laptops" },
+] as const;
+
 export default async function Home() {
-  const [categories, premium, featured] = await Promise.all([
+  const [categories, premium, featuredItems] = await Promise.all([
     getCategories().catch(() => []),
     getListings(
       { in_stock: true, has_price: true, sort: "price_desc", limit: 4 },
@@ -23,12 +32,16 @@ export default async function Home() {
     )
       .then((d) => d.items)
       .catch(() => []),
-    getListings(
-      { in_stock: true, has_price: true, sort: "price_asc", limit: 6 },
-      CACHE,
-    )
-      .then((d) => d.items)
-      .catch(() => []),
+    Promise.all(
+      FEATURED_CATEGORIES.map(({ slug, label }) =>
+        getListings(
+          { category: slug, in_stock: true, has_price: true, sort: "price_asc", limit: 1 },
+          CACHE,
+        )
+          .then((d) => ({ slug, label, listing: d.items[0] ?? null }))
+          .catch(() => ({ slug, label, listing: null as null })),
+      ),
+    ),
   ]);
 
   const showcase = premium[0] ?? null;
@@ -39,7 +52,7 @@ export default async function Home() {
       <Hero preview={heroPreview} />
       <Showcase listing={showcase} />
       <CategoryBento categories={categories} />
-      <Featured listings={featured} />
+      <Featured items={featuredItems} />
     </>
   );
 }

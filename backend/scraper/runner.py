@@ -94,8 +94,13 @@ def run_save(shop):
 
     rate = get_today_rate(sb)
 
+    # Drop out-of-scope listings (category_slug is None): cables, toners, adapters,
+    # software, etc. We never show them, so don't store them or snapshot their prices.
+    in_scope = [l for l in listings if l.category_slug is not None]
+    skipped = len(listings) - len(in_scope)
+
     rows = []
-    for l in listings:
+    for l in in_scope:
         price_usd = None
         if l.price_raw is not None:
             if l.currency == "USD":
@@ -128,8 +133,8 @@ def run_save(shop):
                       products_found=len(listings),
                       products_upserted=len(upserted_rows))
 
-    print(f"\nDone. {len(listings)} fetched, {len(upserted_rows)} upserted, "
-          f"{snapshots} snapshots.")
+    print(f"\nDone. {len(listings)} fetched, {skipped} out-of-scope skipped, "
+          f"{len(upserted_rows)} upserted, {snapshots} snapshots.")
 
 
 if __name__ == "__main__":

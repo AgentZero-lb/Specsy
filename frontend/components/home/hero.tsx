@@ -76,6 +76,35 @@ export function Hero({ preview }: { preview: Listing[] }) {
   );
 }
 
+function HeroThumb({ listing: l }: { listing: Listing }) {
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+
+  if (!l.image_url || status === "error") {
+    return (
+      <div className="grid h-full w-full place-items-center">
+        <CategoryIcon slug={l.category_slug} className="h-5 w-5 text-faint" />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {status === "loading" && (
+        <div className="absolute inset-0 animate-pulse bg-elevated" />
+      )}
+      <Image
+        src={l.image_url}
+        alt={l.raw_name}
+        fill
+        sizes="48px"
+        className="object-contain p-1"
+        onLoad={() => setStatus("loaded")}
+        onError={() => setStatus("error")}
+      />
+    </>
+  );
+}
+
 function PreviewCard({ preview }: { preview: Listing[] }) {
   if (preview.length === 0) return null;
 
@@ -95,22 +124,7 @@ function PreviewCard({ preview }: { preview: Listing[] }) {
             className="group flex items-center gap-3 rounded-card border border-hairline bg-base/60 p-3 transition-colors hover:border-hairline-strong"
           >
             <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-btn bg-base">
-              {l.image_url ? (
-                <Image
-                  src={l.image_url}
-                  alt={l.raw_name}
-                  fill
-                  sizes="48px"
-                  className="object-contain p-1"
-                />
-              ) : (
-                <div className="grid h-full w-full place-items-center">
-                  <CategoryIcon
-                    slug={l.category_slug}
-                    className="h-5 w-5 text-faint"
-                  />
-                </div>
-              )}
+              <HeroThumb listing={l} />
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm text-foreground">{l.raw_name}</p>

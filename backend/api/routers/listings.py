@@ -62,6 +62,11 @@ def list_listings(
 
     if category:
         query = query.eq("category_slug", category)
+    else:
+        # No category picked = "All categories": show only in-scope items.
+        # Out-of-scope listings are stored with category_slug = NULL and must
+        # never surface in browse (cables, toners, adapters, software, etc.).
+        query = query.not_.is_("category_slug", "null")
     if in_stock is not None:
         query = query.eq("in_stock", in_stock)
     if has_price is True:

@@ -3,6 +3,8 @@ import httpx
 from dataclasses import dataclass
 from typing import Optional
 
+from scraper.scope import apply_scope
+
 API_BASE = "https://pcandparts.com/wp-json/wc/store/v1/products"
 HEADERS = {
     "User-Agent": (
@@ -102,6 +104,8 @@ def _parse(p: dict) -> Listing:
     # prices are in cents as strings; "0" means Request Price
     price_raw = int(raw) / 100 if raw and int(raw) > 0 else None
 
+    name = html.unescape(p.get("name", ""))
+
     wc_cats = p.get("categories", [])
     category_slug = None
     for c in wc_cats:
@@ -109,11 +113,13 @@ def _parse(p: dict) -> Listing:
         if slug in CATEGORY_MAP:
             category_slug = CATEGORY_MAP[slug]  # may be None (out of scope)
             break
+    # Final gate: drop accessories/cabling leaking in via broad shop categories.
+    category_slug = apply_scope(category_slug, name)
 
     images = p.get("images", [])
 
     return Listing(
-        raw_name=html.unescape(p.get("name", "")),
+        raw_name=name,
         sku=p.get("sku") or None,
         price_raw=price_raw,
         currency=prices.get("currency_code", "USD"),
