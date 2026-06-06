@@ -51,8 +51,26 @@ def finish_scrape_run(
     ).eq("id", run_id).execute()
 
 
+def _has_column(sb: Client, table: str, col: str) -> bool:
+    """Cheap probe: PostgREST errors on selecting an unknown column."""
+    try:
+        sb.table(table).select(col).limit(1).execute()
+        return True
+    except Exception:
+        return False
+
+
 def upsert_listings(sb: Client, shop_id: str, listings: list[dict]) -> list[dict]:
-    """Upsert in batches of 500; return the upserted rows (each incl. its `id`)."""
+    """Upsert in batches of 500; return the upserted rows (each incl. its `id`).
+
+    Forward-compatible with the `raw_specs` column: if the migration hasn't been
+    applied yet, we strip the field so saves don't hard-fail (never overwrite on error).
+    """
+    if listings and "raw_specs" in listings[0] and not _has_column(sb, "listings", "raw_specs"):
+        print("  note: listings.raw_specs column not found — run migration 002; "
+              "saving without specs for now.")
+        listings = [{k: v for k, v in r.items() if k != "raw_specs"} for r in listings]
+
     BATCH = 500
     rows: list[dict] = []
     for i in range(0, len(listings), BATCH):

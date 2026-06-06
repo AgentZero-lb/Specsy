@@ -65,7 +65,30 @@
       "Bash(curl -s -m 40 \"http://localhost:8000/listings/categories\")",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('  total in-scope listings:', sum\\(c['count'] for c in d\\)\\); [print\\(f\\\\\"  {c['slug']:<14}{c['count']}\\\\\"\\) for c in d]\")",
       "Bash(xargs grep -l \"blurDataURL\")",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(curl -s --retry 30 --retry-delay 1 --retry-connrefused -m 60 \"http://localhost:8000/admin/matches?limit=3\" -o /tmp/m.json -w \"HTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -m 60 \"http://localhost:8000/admin/matches?limit=4\")",
+      "Bash(curl -s --retry 40 --retry-delay 2 --retry-connrefused -m 150 \"http://localhost:3000/admin/matches\" -o /dev/null -w \"page HTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -m 30 \"http://localhost:3000/admin/matches\")",
+      "Bash(grep -oE \"Product matches — QA|Matched products|Coverage|[0-9]+\\\\.[0-9]%|RTX 50[0-9]+|Lenovo[^<]{0,30}|Intel Core[^<]{0,20}|spread \\\\$[0-9]+|Macr|pcan\")",
+      "Bash(python -c \"import numpy; print\\('numpy', numpy.__version__\\)\")",
+      "Bash(python -m py_compile api/routers/admin.py api/main.py scraper/match_vector.py)",
+      "Read(//c/Users/aitec/AppData/Local/Temp/**)",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "Bash(curl -s --retry 30 --retry-delay 1 --retry-connrefused -m 60 \"http://localhost:8000/admin/matches?limit=4\")",
+      "Bash(curl -s -m 30 \"http://localhost:8000/admin/match-queue?limit=1\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('  pending in queue:', d['stats']['pending']\\)\")",
+      "Bash(curl -s -m 30 \"http://localhost:8000/listings?q=Kraken%20V3%20X&limit=3\")",
+      "Bash(curl -s -m 30 -w \"\\\\nHTTP %{http_code}\\\\n\" \"http://localhost:8000/admin/match-queue?limit=1\")",
+      "Bash(powershell -NoProfile -Command \"\\(Get-NetTCPConnection -LocalPort 8000 -State Listen -EA SilentlyContinue | Select -Expand OwningProcess -Unique\\)\")",
+      "Bash(powershell -NoProfile -Command 'Get-NetTCPConnection -LocalPort 8000 -State Listen -EA SilentlyContinue | ForEach-Object { $p=Get-Process -Id $_.OwningProcess -EA SilentlyContinue; '\\\\''{0}  {1}'\\\\'' -f $_.OwningProcess, $p.ProcessName }')",
+      "Bash(curl -s -m 20 \"http://localhost:8000/health\" -w \"  HTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -m 30 \"http://localhost:8000/admin/match-queue?limit=1\" -w \"\\\\n  HTTP %{http_code}\\\\n\")",
+      "Bash(curl -s --retry 30 --retry-delay 1 --retry-connrefused -m 60 \"http://localhost:8001/admin/match-queue?limit=1\" -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -m 40 \"http://localhost:8001/admin/matches?limit=1\")",
+      "Bash(python -c \"import sys,json; print\\(' ', json.load\\(sys.stdin\\)['stats']\\)\")",
+      "Bash(powershell -NoProfile -Command ' *)"
     ]
   }
 }

@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "pcandparts.com", pathname: "/wp-content/**" },
       { protocol: "https", hostname: "cdn.shopify.com", pathname: "/s/files/**" },
+      { protocol: "https", hostname: "cdn11.bigcommerce.com" },
     ],
   },
 };

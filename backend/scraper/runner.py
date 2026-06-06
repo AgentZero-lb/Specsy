@@ -4,7 +4,7 @@ Usage (run from the backend/ directory):
     python -m scraper.runner [shop] --save     # fetch + upsert to Supabase (needs .env)
 
     [shop] defaults to 'pcandparts'.
-    Available shops: pcandparts, macrotronics
+    Available shops: pcandparts, macrotronics, ayoub
 """
 
 import argparse
@@ -15,6 +15,7 @@ import sys
 SHOPS = {
     "pcandparts":   "scraper.shops.pcandparts",
     "macrotronics": "scraper.shops.macrotronics",
+    "ayoub":        "scraper.shops.ayoub",
 }
 
 
@@ -111,7 +112,9 @@ def run_save(shop):
         rows.append({
             "shop_id":       shop_id,
             "scrape_run_id": run_id,
-            "product_id":    None,
+            # NB: do NOT write product_id here. On upsert-conflict PostgREST only updates
+            # the columns we send, so omitting it PRESERVES matches across re-scrapes
+            # (new listings still default to NULL). Writing None would wipe matching every run.
             "raw_name":      l.raw_name,
             "sku":           l.sku,
             "price_raw":     l.price_raw,
@@ -121,6 +124,8 @@ def run_save(shop):
             "product_url":   l.product_url,
             "image_url":     l.image_url,
             "category_slug": l.category_slug,
+            # only Ayoub's Listing carries specs; other shops default to {}
+            "raw_specs":     getattr(l, "raw_specs", None) or {},
             "last_seen_at":  "now()",
         })
 
