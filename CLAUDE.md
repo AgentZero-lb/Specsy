@@ -43,7 +43,8 @@ GitHub: AgentZero-lb/Specsy (private)
   paged admin product lookup (avoids Supabase's 1,000-row cap) ✅
 - Frontend: Next.js 16 built (home / browse / listing detail), wired to /listings API ✅
 - Deploy: `render.yaml` + `DEPLOY.md` ready; **not deployed yet** (backend must be hosted before the Vercel frontend) ⏳
-- Next action: review quarantined groups / regenerate queue candidates, then deploy when ready.
+- Next action: review quarantined groups with the read-only workspace / regenerate queue
+  candidates, then deploy when ready.
 
 ## DB tables (all deployed)
 shops, categories, products, listings, price_snapshots,
@@ -155,6 +156,10 @@ per-category identity + fail-closed validation + a reversible, atomic rebuild.
 - Old learned `product_aliases` are **quarantined** (source→'quarantined') on rebuild and not
   reused (they came from the false-merge matcher); the API doesn't read aliases.
 - Tests: `cd backend && python tests/test_matching.py` (34, framework-free).
+- Quarantine review: `cd backend && python scripts/review_quarantine.py --open` generates
+  `reports/quarantine_review.html` using DB SELECTs only. Review choices stay in browser
+  local storage and export to an inert proposal CSV; there is no apply path. See
+  `backend/QUARANTINE_REVIEW.md`. Tests: `python tests/test_quarantine_review.py` (5).
 - PostgREST pagination is mandatory for validation/cleanup reads over 1,000 rows. Staging
   validation checks the exact listing set + product count; aliases and queue cleanup page fully.
 
