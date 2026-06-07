@@ -76,9 +76,22 @@ In GitHub, open **Settings → Secrets and variables → Actions** and add:
 | `SUPABASE_URL` | *(from local `.env`)* |
 | `SUPABASE_SERVICE_KEY` | *(from local `.env`)* |
 
-Then open **Actions → Refresh catalog → Run workflow** once. Confirm all three
-shop jobs finish successfully. Existing product matches are preserved on re-scrape;
-listings absent from a healthy full catalog are retained but marked out of stock.
+Then open **Actions → Refresh catalog → Run workflow** once. Confirm the
+Macrotronics and Ayoub jobs finish successfully. Existing product matches are
+preserved on re-scrape; listings absent from a healthy full catalog are retained
+but marked out of stock.
+
+PCandParts blocks GitHub-hosted runner IPs with an anti-bot HTML response, so it is
+intentionally excluded from the scheduled workflow. Refresh it manually from a
+trusted network:
+
+```powershell
+cd backend
+python -m scraper.runner pcandparts --save
+```
+
+When automatic PCandParts refreshes are worth the cost, move that command to a
+Render cron job. Render currently has a $1/month minimum per cron service.
 
 Internal `/admin` API and frontend routes are disabled by default. Do not enable
 `ENABLE_ADMIN_ROUTES` or `ENABLE_ADMIN_UI` on the public beta.
@@ -106,7 +119,8 @@ The frontend does **not** use Supabase directly — `NEXT_PUBLIC_API_URL` is the
 - [ ] Open the Vercel URL → homepage shows real products (not empty)
 - [ ] Open a product → price-comparison panel + "View at shop" work
 - [ ] Browse → filters + infinite scroll load real listings
-- [ ] GitHub Actions `Refresh catalog` succeeds for all three shops
+- [ ] GitHub Actions `Refresh catalog` succeeds for Macrotronics and Ayoub
+- [ ] PCandParts was refreshed manually when its catalog needs updating
 - [ ] Footer warns users to verify final price and stock with the shop
 
 If the deployed site is **empty**: the API URL is wrong/unset, the backend is asleep

@@ -17,7 +17,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shop: [pcandparts, macrotronics, ayoub]
+        # PCandParts serves an anti-bot HTML page to GitHub-hosted runners.
+        # Refresh it manually from a trusted network or a Render cron job.
+        shop: [macrotronics, ayoub]
 
     defaults:
       run:

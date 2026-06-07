@@ -24,7 +24,7 @@ GitHub: AgentZero-lb/Specsy (private)
 - Scope gate (`scraper/scope.py`) is shared by scrapers + DB cleanup — out-of-scope-by-title items get `category_slug = NULL` (hidden by API), never deleted
 
 ## Current status
-- Phase: **3 shops live + full frontend built + hardened matching live; pre-deploy**
+- Phase: **public beta deployed; 3 shops live + hardened matching live**
 - Schema: deployed to Supabase ✅
 - Shops live: PCandParts (WooCommerce) + Macrotronics (Shopify) + Ayoub Computers (BigCommerce) ✅
 - Listings: **10,021 in-scope** across 24 categories (NULL-category rows hidden) ✅
@@ -42,9 +42,12 @@ GitHub: AgentZero-lb/Specsy (private)
 - FastAPI: live locally; added `sort`, `last_seen_at`, product comparison endpoint, and
   paged admin product lookup (avoids Supabase's 1,000-row cap) ✅
 - Frontend: Next.js 16 built (home / browse / listing detail), wired to /listings API ✅
-- Deploy: `render.yaml` + `DEPLOY.md` ready; **not deployed yet** (backend must be hosted before the Vercel frontend) ⏳
-- Next action: review quarantined groups with the read-only workspace / regenerate queue
-  candidates, then deploy when ready.
+- Deploy: API live at `https://specsy-api.onrender.com`; frontend live at
+  `https://specsy-lebanon.vercel.app`. Git auto-deploy is connected with Vercel
+  Root Directory set to `frontend`.
+- Catalog schedule: GitHub Actions refreshes Macrotronics + Ayoub every 12 hours.
+  PCandParts blocks GitHub-hosted runner IPs and is refreshed manually from a
+  trusted network; optional Render cron automation has a $1/month minimum.
 
 ## DB tables (all deployed)
 shops, categories, products, listings, price_snapshots,
@@ -54,7 +57,8 @@ match_queue, product_aliases, exchange_rates, scrape_runs, builds
 
 ## Shop 1: PCandParts — VERIFIED
 - Platform: WooCommerce
-- API: https://pcandparts.com/wp-json/wc/store/v1/products (open, no auth needed)
+- API: `https://pcandparts.com/?rest_route=/wc/store/v1/products` (no auth;
+  blocks some cloud-hosted IPs)
 - Total products: 5,303 across 54 pages
 - In-scope after category filter: ~4,122 (78%)
 - Has real price: 54% — rest are "Request Price" (price_raw = null, is fine)
@@ -236,13 +240,13 @@ Start: `cd backend && uvicorn api.main:app --port 8000`
 - Note: real per-shop prices/stock + cross-shop comparison are live; full technical spec tables
   still pending (products.specs is empty until matching enriches it)
 
-## Deployment (configured, NOT deployed)
+## Deployment (live)
 - Backend → Render: `render.yaml` (rootDir `backend`, `requirements-api.txt`, uvicorn, healthcheck `/health`).
-  Set `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` in the Render dashboard.
+  Live at `https://specsy-api.onrender.com`.
 - Frontend → Vercel: **Root Directory = `frontend`**; set `NEXT_PUBLIC_API_URL` = backend public URL.
-  Use the Vercel web dashboard (CLI install is flaky on this machine).
-- ORDER matters: deploy backend first — the frontend fetches it at build + runtime, and localhost
-  is unreachable from Vercel. Steps in `DEPLOY.md`.
+  Live at `https://specsy-lebanon.vercel.app`; Git auto-deploy is connected.
+- Scheduled refresh: GitHub Actions runs Macrotronics + Ayoub every 12 hours.
+  PCandParts must run manually or on an optional paid Render cron. Steps in `DEPLOY.md`.
 
 ## Known issues to fix
 - Some product names have garbled chars (â€" instead of –) — double UTF-8 encoding from the shop HTML

@@ -23,7 +23,9 @@ pip install -r requirements.txt
 python scraper/probe.py
 ```
 
-This confirms whether the WooCommerce Store API on PCandParts is publicly accessible. If it returns products, the scraper can use the API. If not, it falls back to HTML scraping.
+This confirms whether the WooCommerce Store API on PCandParts is publicly
+accessible from the current network. PCandParts blocks some cloud-hosted IPs, so
+its refresh must run from a trusted network or a dedicated scheduled service.
 
 ### 2. Run the API
 
