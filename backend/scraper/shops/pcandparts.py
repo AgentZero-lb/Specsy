@@ -5,13 +5,15 @@ from typing import Optional
 
 from scraper.scope import apply_scope
 
-API_BASE = "https://pcandparts.com/wp-json/wc/store/v1/products"
+API_BASE = "https://pcandparts.com/"
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/124.0.0.0 Safari/537.36"
-    )
+    ),
+    "Accept": "application/json, text/plain, */*",
+    "Referer": "https://pcandparts.com/",
 }
 PER_PAGE = 100
 
@@ -136,10 +138,22 @@ def fetch_all(verbose: bool = True) -> list[Listing]:
 
     with httpx.Client(headers=HEADERS, timeout=20) as client:
         while True:
-            resp = client.get(API_BASE, params={"per_page": PER_PAGE, "page": page})
+            resp = client.get(API_BASE, params={
+                "rest_route": "/wc/store/v1/products",
+                "per_page": PER_PAGE,
+                "page": page,
+            })
             resp.raise_for_status()
 
-            batch = resp.json()
+            try:
+                batch = resp.json()
+            except ValueError as exc:
+                content_type = resp.headers.get("content-type", "unknown")
+                raise RuntimeError(
+                    f"PC and Parts returned non-JSON content ({content_type})"
+                ) from exc
+            if not isinstance(batch, list):
+                raise RuntimeError("PC and Parts returned an unexpected API payload")
             if not batch:
                 break
 
