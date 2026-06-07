@@ -5,10 +5,13 @@ This is what the listing detail page calls once it knows a listing is matched
 its listings are ranked so the cheapest in-stock deal is first.
 """
 from typing import Optional
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from supabase import Client
 from api.deps import get_supabase
+from api.retry import execute_query
 from api.routers.listings import ShopOut
 
 router = APIRouter()
@@ -48,14 +51,15 @@ def _rank_key(row: dict):
 
 
 @router.get("/{product_id}/listings", response_model=ProductDetailOut)
-def get_product_listings(product_id: str, sb: Client = Depends(get_supabase)):
+def get_product_listings(product_id: UUID, sb: Client = Depends(get_supabase)):
+    product_id = str(product_id)
     prod = (
         sb.table("products")
         .select("id, name, brand, category_id, categories(slug, name)")
         .eq("id", product_id)
         .maybe_single()
-        .execute()
     )
+    prod = execute_query(prod)
     if not prod or not prod.data:
         raise HTTPException(status_code=404, detail="Product not found")
 
@@ -68,9 +72,8 @@ def get_product_listings(product_id: str, sb: Client = Depends(get_supabase)):
             "product_url, image_url, last_seen_at, shops(slug, name, url)"
         )
         .eq("product_id", product_id)
-        .execute()
-        .data
     )
+    rows = execute_query(rows).data
     rows.sort(key=_rank_key)
 
     listings, best_image = [], None

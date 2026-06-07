@@ -152,8 +152,8 @@ function ProductView({
           ))}
         </div>
         <p className="mt-3 text-xs text-faint">
-          Prices and stock update automatically. &ldquo;Updated&rdquo; shows when
-          each shop was last checked.
+          &ldquo;Updated&rdquo; shows when each shop was last checked. Confirm
+          price and availability on the shop page before buying.
         </p>
       </section>
 

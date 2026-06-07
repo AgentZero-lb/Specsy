@@ -27,14 +27,14 @@ GitHub: AgentZero-lb/Specsy (private)
 - Phase: **3 shops live + full frontend built + hardened matching live; pre-deploy**
 - Schema: deployed to Supabase ✅
 - Shops live: PCandParts (WooCommerce) + Macrotronics (Shopify) + Ayoub Computers (BigCommerce) ✅
-- Listings: **9,994 in-scope** across 24 categories (NULL-category rows hidden) ✅
+- Listings: **10,021 in-scope** across 24 categories (NULL-category rows hidden) ✅
 - price_snapshots: one row per listing per run — the ~1000-row cap bug is fixed ✅
 - Scope gate: title-based filter (`scope.py`) drops mis-filed accessories; `cleanup_scope.py` nulled existing rows ✅
 - Matching: **LIVE — identity-based + fail-closed (see "Product matching strategy")**.
   Old chip-level matcher produced ~414 false merges; replaced by `scraper/identity.py` strict
   per-category identity + validated, reversible, atomic staged rebuild. Embedding/Haiku passes
   demoted to queue-only candidate generators. Rebuild
-  `f6090a06-96c5-4715-881c-6a8d22ca24b5` is active: **1,025 matched listings (10.3%) /
+  `f6090a06-96c5-4715-881c-6a8d22ca24b5` is active: **1,025 matched listings (10.2%) /
   462 products**, with 0 cross-brand/chip/multi-model/motherboard-variant groups; 76 groups
   quarantined for review. `listings.raw_specs` (jsonb, migration 002) enriches identity.
 - Re-scrape safety: `runner.py` no longer writes `product_id` on upsert, so re-scrapes
@@ -115,6 +115,8 @@ match_queue, product_aliases, exchange_rates, scrape_runs, builds
 - `python -m scraper.runner [shop] [--save]` (run from `backend/`); shop defaults to `pcandparts`
 - Multi-shop registry in `runner.py` (slug → module). Each shop module exposes `fetch_all()` + `SHOP_META`
 - Dry run prints counts; `--save` upserts to Supabase (idempotent on `shop_id,product_url`) + writes a price_snapshot per listing
+- After a healthy full scrape (>=80% catalog coverage), stored listings absent from the
+  latest result are preserved but marked out of stock. Partial/zero scrapes cannot do this.
 - Note: large `--save` runs can hit transient Supabase read-timeouts from a flaky connection; it's idempotent — just re-run
 
 ## Category scope
@@ -181,7 +183,7 @@ per-category identity + fail-closed validation + a reversible, atomic rebuild.
   `python -m scraper.match_llm --apply` → match_queue only.
 
 ### Live rebuild stats (algo match-2026.06.07-identity-v3-motherboard)
-- in-scope 9,994 · **LIVE matched 1,025 (10.3%), 462 products** (1 SKU product,
+- in-scope 10,021 · **LIVE matched 1,025 (10.2%), 462 products** (1 SKU product,
   461 identity_rule products). The old 3,596 mappings were replaced atomically.
 - ACCEPTED quality: **cross-brand 0, cross-chip 0, multi-model 0, motherboard-variant 0**,
   SKU conflicts 0. Motherboard: 4 accepted products / 10 listings; DDR4/DDR5, WiFi,

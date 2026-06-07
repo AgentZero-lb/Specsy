@@ -1,4 +1,6 @@
 // Admin/QA view of product matches. No auth, intentionally plain.
+import { notFound } from "next/navigation";
+
 export const dynamic = "force-dynamic";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -49,6 +51,8 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 }
 
 export default async function AdminMatchesPage() {
+  if (process.env.ENABLE_ADMIN_UI !== "true") notFound();
+
   let data: MatchesResponse;
   try {
     data = await getMatches();

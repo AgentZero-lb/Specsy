@@ -1,4 +1,6 @@
 // Admin/QA review of middle-band fuzzy candidates. No auth, intentionally plain.
+import { notFound } from "next/navigation";
+
 export const dynamic = "force-dynamic";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -38,6 +40,8 @@ async function getQueue(): Promise<QueueResponse> {
 }
 
 export default async function MatchQueuePage() {
+  if (process.env.ENABLE_ADMIN_UI !== "true") notFound();
+
   let data: QueueResponse;
   try {
     data = await getQueue();

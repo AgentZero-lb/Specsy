@@ -17,7 +17,7 @@ Two pieces, deployed separately:
 
 Everything is pre-configured in [`render.yaml`](./render.yaml). You only set two secrets.
 
-1. **Push** these deploy files (you already pushed the app; just push this commit):
+1. **Push** the launch-ready commits:
    ```powershell
    git push
    ```
@@ -64,6 +64,27 @@ After this, every `git push` to `master` auto-deploys both Render and Vercel.
 
 ---
 
+## Part 3 — Automatic catalog refresh
+
+The repository includes `.github/workflows/refresh-catalog.yml`, scheduled every
+12 hours and also runnable manually from GitHub Actions.
+
+In GitHub, open **Settings → Secrets and variables → Actions** and add:
+
+| Secret | Value |
+|--------|-------|
+| `SUPABASE_URL` | *(from local `.env`)* |
+| `SUPABASE_SERVICE_KEY` | *(from local `.env`)* |
+
+Then open **Actions → Refresh catalog → Run workflow** once. Confirm all three
+shop jobs finish successfully. Existing product matches are preserved on re-scrape;
+listings absent from a healthy full catalog are retained but marked out of stock.
+
+Internal `/admin` API and frontend routes are disabled by default. Do not enable
+`ENABLE_ADMIN_ROUTES` or `ENABLE_ADMIN_UI` on the public beta.
+
+---
+
 ## Env var cheat-sheet
 
 | Where | Var | Purpose |
@@ -85,6 +106,8 @@ The frontend does **not** use Supabase directly — `NEXT_PUBLIC_API_URL` is the
 - [ ] Open the Vercel URL → homepage shows real products (not empty)
 - [ ] Open a product → price-comparison panel + "View at shop" work
 - [ ] Browse → filters + infinite scroll load real listings
+- [ ] GitHub Actions `Refresh catalog` succeeds for all three shops
+- [ ] Footer warns users to verify final price and stock with the shop
 
 If the deployed site is **empty**: the API URL is wrong/unset, the backend is asleep
 (retry after ~40s), or CORS is blocking — confirm the backend origin regex matches your

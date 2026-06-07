@@ -39,7 +39,7 @@ export function Hero({ preview }: { preview: Listing[] }) {
         <div className="flex flex-col items-start gap-6">
           <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-surface/60 px-3 py-1 text-xs text-muted backdrop-blur">
             <span className="h-1.5 w-1.5 rounded-full bg-success" />
-            Live Lebanese shop prices
+            Lebanese shop prices in one place
           </span>
           <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-5xl md:text-6xl">
             Lebanon&apos;s PC parts,
@@ -49,18 +49,12 @@ export function Hero({ preview }: { preview: Listing[] }) {
           <p className="max-w-md text-lg text-muted">
             Real prices from Lebanese shops. No tab-switching.
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div>
             <Link
               href="/browse"
               className={buttonVariants({ variant: "primary", size: "lg" })}
             >
               Browse parts
-            </Link>
-            <Link
-              href="/build"
-              className={buttonVariants({ variant: "outline", size: "lg" })}
-            >
-              Build a PC
             </Link>
           </div>
         </div>

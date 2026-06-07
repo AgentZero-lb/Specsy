@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import {
   Cpu,
   CircuitBoard,
@@ -63,6 +64,5 @@ export function CategoryIcon({
   slug: string | null | undefined;
   className?: string;
 }) {
-  const Icon = categoryIcon(slug);
-  return <Icon className={className} aria-hidden />;
+  return createElement(categoryIcon(slug), { className, "aria-hidden": true });
 }

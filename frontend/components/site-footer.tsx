@@ -18,15 +18,11 @@ export function SiteFooter() {
           <Link href="/browse" className="transition-colors hover:text-foreground">
             Browse
           </Link>
-          <Link href="/build" className="transition-colors hover:text-foreground">
-            Build a PC
-          </Link>
-          <Link href="/" className="transition-colors hover:text-foreground">
-            About
-          </Link>
         </nav>
 
-        <p className="text-xs text-faint">Data refreshed every 12h</p>
+        <p className="max-w-sm text-xs text-faint md:text-right">
+          Prices and stock can change. Confirm the final details with the shop.
+        </p>
       </div>
     </footer>
   );

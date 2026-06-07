@@ -22,7 +22,7 @@ export function Featured({ items }: { items: FeaturedItem[] }) {
             Lowest price per category
           </h2>
           <p className="mt-1 text-muted">
-            Cheapest in-stock item available right now, by category.
+            Lowest recently collected in-stock price, by category.
           </p>
         </div>
         <Link

@@ -1,8 +1,11 @@
 from typing import Optional
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from supabase import Client
 from api.deps import get_supabase
+from api.retry import execute_query
 
 router = APIRouter()
 
@@ -44,10 +47,10 @@ class CategoryCount(BaseModel):
 
 @router.get("", response_model=ListingsPage)
 def list_listings(
-    category: Optional[str] = Query(None, description="Filter by category slug"),
+    category: Optional[str] = Query(None, max_length=64, description="Filter by category slug"),
     in_stock: Optional[bool] = Query(None, description="Filter by stock status"),
     has_price: Optional[bool] = Query(None, description="True = priced only, False = Request Price only"),
-    q: Optional[str] = Query(None, description="Search by name (case-insensitive)"),
+    q: Optional[str] = Query(None, max_length=100, description="Search by name (case-insensitive)"),
     sort: str = Query("name", pattern="^(name|price_asc|price_desc)$",
                       description="Sort order. price_* should be paired with has_price=true to exclude Request-Price items."),
     page: int = Query(1, ge=1),
@@ -84,7 +87,7 @@ def list_listings(
     else:  # "name"
         query = query.order("raw_name")
 
-    result = query.range(offset, offset + limit - 1).execute()
+    result = execute_query(query.range(offset, offset + limit - 1))
 
     items = []
     for row in result.data:
@@ -99,10 +102,10 @@ def list_listings(
 
 @router.get("/categories", response_model=list[CategoryCount])
 def list_categories(sb: Client = Depends(get_supabase)):
-    cats_result = sb.table("categories").select("slug, name").execute()
+    cats_result = execute_query(sb.table("categories").select("slug, name"))
     cats = {c["slug"]: c["name"] for c in cats_result.data}
 
-    counts_result = sb.rpc("get_category_counts", {}).execute()
+    counts_result = execute_query(sb.rpc("get_category_counts", {}))
 
     return [
         CategoryCount(
@@ -115,14 +118,14 @@ def list_categories(sb: Client = Depends(get_supabase)):
 
 
 @router.get("/{listing_id}", response_model=ListingOut)
-def get_listing(listing_id: str, sb: Client = Depends(get_supabase)):
+def get_listing(listing_id: UUID, sb: Client = Depends(get_supabase)):
     result = (
         sb.table("listings")
         .select("id, product_id, raw_name, sku, price_usd, price_raw, currency, in_stock, last_seen_at, product_url, image_url, category_slug, shops(slug, name, url)")
-        .eq("id", listing_id)
+        .eq("id", str(listing_id))
         .maybe_single()
-        .execute()
     )
+    result = execute_query(result)
 
     if not result or not result.data:
         raise HTTPException(status_code=404, detail="Listing not found")

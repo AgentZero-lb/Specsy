@@ -3,4 +3,5 @@
 fastapi
 uvicorn[standard]
 supabase==2.7.4
+httpx
 python-dotenv

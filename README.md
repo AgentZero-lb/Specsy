@@ -6,12 +6,12 @@ PCPartPicker for Lebanon — compare PC part prices across Lebanese shops in USD
 
 | Layer | Tech |
 |---|---|
-| Frontend | Next.js 14, TypeScript, Tailwind CSS, shadcn/ui |
-| Backend | Python 3.11, FastAPI |
+| Frontend | Next.js 16, TypeScript, Tailwind CSS |
+| Backend | Python 3.12, FastAPI |
 | Scraper | httpx + selectolax (one module per shop) |
 | Database | PostgreSQL + pgvector via Supabase |
 | AI | Claude API — Haiku (classification) · Sonnet (builds + chat) |
-| Deploy | Vercel (frontend) · Railway/VPS (backend + scrapers) |
+| Deploy | Vercel (frontend) · Render (backend) · GitHub Actions (scrapers) |
 
 ## Getting started
 

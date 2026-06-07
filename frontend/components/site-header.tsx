@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 
 const LINKS = [
   { href: "/browse", label: "Browse" },
-  { href: "/build", label: "Build a PC" },
 ];
 
 export function SiteHeader() {

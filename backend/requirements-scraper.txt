@@ -1,0 +1,6 @@
+# Minimal dependencies for scheduled catalog refreshes.
+httpx
+selectolax
+beautifulsoup4
+supabase==2.7.4
+python-dotenv

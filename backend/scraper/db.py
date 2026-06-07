@@ -109,6 +109,61 @@ def upsert_price_snapshots(sb: Client, run_id: str, upserted_rows: list[dict]) -
     return len(snapshots)
 
 
+def plan_missing_listings(
+    existing_ids: set[str],
+    seen_ids: set[str],
+    minimum_coverage: float = 0.8,
+) -> list[str]:
+    """Return stored listings absent from a healthy full-catalog scrape.
+
+    The coverage guard prevents a partial-but-nonzero scrape from marking most of
+    a shop unavailable. Callers keep every row and mapping; only stock is changed.
+    """
+    if not existing_ids:
+        return []
+    coverage = len(existing_ids & seen_ids) / len(existing_ids)
+    if coverage < minimum_coverage:
+        return []
+    return sorted(existing_ids - seen_ids)
+
+
+def mark_missing_listings_unavailable(
+    sb: Client,
+    shop_id: str,
+    seen_ids: set[str],
+    minimum_coverage: float = 0.8,
+) -> int:
+    """Mark listings absent from a successful full scrape out of stock.
+
+    Rows, prices, history, and product_id mappings are preserved. Only in-scope
+    rows are considered; scope cleanup owns category_slug=NULL records.
+    """
+    existing_ids: set[str] = set()
+    page, page_size = 0, 1000
+    while True:
+        rows = (
+            sb.table("listings")
+            .select("id")
+            .eq("shop_id", shop_id)
+            .not_.is_("category_slug", "null")
+            .range(page * page_size, page * page_size + page_size - 1)
+            .execute()
+            .data
+            or []
+        )
+        existing_ids.update(row["id"] for row in rows)
+        if len(rows) < page_size:
+            break
+        page += 1
+
+    missing_ids = plan_missing_listings(existing_ids, seen_ids, minimum_coverage)
+    for start in range(0, len(missing_ids), 200):
+        sb.table("listings").update({"in_stock": False}).in_(
+            "id", missing_ids[start:start + 200]
+        ).execute()
+    return len(missing_ids)
+
+
 def get_today_rate(sb: Client) -> Optional[float]:
     result = (
         sb.table("exchange_rates")

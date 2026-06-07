@@ -68,6 +68,7 @@ def run_save(shop):
         finish_scrape_run,
         upsert_listings,
         get_today_rate,
+        mark_missing_listings_unavailable,
         upsert_price_snapshots,
     )
 
@@ -133,13 +134,17 @@ def run_save(shop):
 
     # one price snapshot per listing, using ids from the upsert (no row cap)
     snapshots = upsert_price_snapshots(sb, run_id, upserted_rows)
+    unavailable = mark_missing_listings_unavailable(
+        sb, shop_id, {row["id"] for row in upserted_rows}
+    )
 
     finish_scrape_run(sb, run_id, "ok",
                       products_found=len(listings),
                       products_upserted=len(upserted_rows))
 
     print(f"\nDone. {len(listings)} fetched, {skipped} out-of-scope skipped, "
-          f"{len(upserted_rows)} upserted, {snapshots} snapshots.")
+          f"{len(upserted_rows)} upserted, {snapshots} snapshots, "
+          f"{unavailable} missing listings marked out of stock.")
 
 
 if __name__ == "__main__":

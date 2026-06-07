@@ -9,12 +9,9 @@ import { ProductCard } from "@/components/product-card";
 import { ProductCardSkeleton } from "@/components/product-card-skeleton";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
 const LIMIT = 48;
-const PRICE_MAX = 10_000;
-const PRICE_STEP = 50;
 
 const SORTS: { value: SortOrder; label: string }[] = [
   { value: "name", label: "Name (A–Z)" },
@@ -58,9 +55,6 @@ export function BrowseClient({ categories }: { categories: CategoryCount[] }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
 
-  // Client-only price filter (the API has no min/max price params yet)
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, PRICE_MAX]);
-
   const [searchText, setSearchText] = useState(q);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -78,7 +72,11 @@ export function BrowseClient({ categories }: { categories: CategoryCount[] }) {
   }
 
   // Keep the search box in sync with the URL (back/forward navigation)
-  useEffect(() => setSearchText(q), [q]);
+  useEffect(() => {
+    // URL navigation is an external state source, so the input must follow it.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSearchText(q);
+  }, [q]);
 
   // Debounce search input → URL
   useEffect(() => {
@@ -93,6 +91,8 @@ export function BrowseClient({ categories }: { categories: CategoryCount[] }) {
   // Fetch page 1 whenever a server-affecting filter changes
   useEffect(() => {
     let ignore = false;
+    // This reset intentionally happens at the start of each network request.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(false);
     getListings({ ...query, page: 1, limit: LIMIT })
@@ -139,16 +139,6 @@ export function BrowseClient({ categories }: { categories: CategoryCount[] }) {
     obs.observe(el);
     return () => obs.disconnect();
   }, [loadMore]);
-
-  const visibleItems = useMemo(
-    () =>
-      items.filter((l) =>
-        l.price_usd == null
-          ? true // Request-Price items are never filtered out by price
-          : l.price_usd >= priceRange[0] && l.price_usd <= priceRange[1],
-      ),
-    [items, priceRange],
-  );
 
   const activeFilterCount =
     (category ? 1 : 0) + (inStock ? 1 : 0) + (hasPrice ? 1 : 0);
@@ -201,27 +191,6 @@ export function BrowseClient({ categories }: { categories: CategoryCount[] }) {
         />
       </div>
 
-      {/* Price range (client-side) */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <Label>Price (USD)</Label>
-          <span className="font-mono text-xs text-muted">
-            ${priceRange[0]} – ${priceRange[1]}
-            {priceRange[1] >= PRICE_MAX ? "+" : ""}
-          </span>
-        </div>
-        <Slider
-          min={0}
-          max={PRICE_MAX}
-          step={PRICE_STEP}
-          value={priceRange}
-          onValueChange={(v) => setPriceRange([v[0], v[1]] as [number, number])}
-        />
-        <p className="text-[11px] leading-tight text-faint">
-          Filters loaded results; Request-Price items always shown.
-        </p>
-      </div>
-
       {/* Categories */}
       <div className="flex flex-col gap-1">
         <Label className="mb-1">Category</Label>
@@ -257,8 +226,6 @@ export function BrowseClient({ categories }: { categories: CategoryCount[] }) {
           </h1>
           <p className="mt-1 text-sm text-muted">
             {loading ? "Loading…" : `${total.toLocaleString()} listings`}
-            {visibleItems.length !== items.length &&
-              ` · ${visibleItems.length} in price range`}
           </p>
         </div>
 
@@ -296,15 +263,15 @@ export function BrowseClient({ categories }: { categories: CategoryCount[] }) {
                 <ProductCardSkeleton key={i} />
               ))}
             </Grid>
-          ) : visibleItems.length === 0 ? (
+          ) : items.length === 0 ? (
             <EmptyState
               title="No matching parts"
-              body="Try widening the price range or clearing a filter."
+              body="Try another search or clear a filter."
             />
           ) : (
             <>
               <Grid>
-                {visibleItems.map((l) => (
+                {items.map((l) => (
                   <ProductCard key={l.id} listing={l} />
                 ))}
               </Grid>
@@ -344,7 +311,7 @@ export function BrowseClient({ categories }: { categories: CategoryCount[] }) {
               onClick={() => setFiltersOpen(false)}
               className="mt-6 h-11 w-full rounded-btn bg-accent font-medium text-accent-foreground"
             >
-              Show {visibleItems.length} results
+              Show {total.toLocaleString()} results
             </button>
           </div>
         </div>

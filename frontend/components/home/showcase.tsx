@@ -55,7 +55,7 @@ export function Showcase({ listing }: { listing: Listing | null }) {
   const callouts = [
     {
       icon: BadgeCheck,
-      label: "Live price",
+      label: "Listed price",
       value: formatUSD(listing.price_usd, { decimals: true }),
     },
     {
