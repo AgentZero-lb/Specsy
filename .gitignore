@@ -27,5 +27,13 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Claude Code local settings
+# Claude Code local settings + runtime locks
 .claude/settings.local.json
+.claude/*.lock
+
+# Generated matcher artifacts (mapping backups, audit/quarantine reports)
+backend/backups/
+backend/reports/
+
+# Server logs
+*.log

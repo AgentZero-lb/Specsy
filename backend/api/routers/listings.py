@@ -15,6 +15,7 @@ class ShopOut(BaseModel):
 
 class ListingOut(BaseModel):
     id: str
+    product_id: Optional[str] = None  # null = unmatched (single-shop); set = linked to a canonical product
     raw_name: str
     sku: Optional[str]
     price_usd: Optional[float]
@@ -57,7 +58,7 @@ def list_listings(
 
     query = (
         sb.table("listings")
-        .select("id, raw_name, sku, price_usd, price_raw, currency, in_stock, last_seen_at, product_url, image_url, category_slug, shops(slug, name, url)", count="exact")
+        .select("id, product_id, raw_name, sku, price_usd, price_raw, currency, in_stock, last_seen_at, product_url, image_url, category_slug, shops(slug, name, url)", count="exact")
     )
 
     if category:
@@ -117,7 +118,7 @@ def list_categories(sb: Client = Depends(get_supabase)):
 def get_listing(listing_id: str, sb: Client = Depends(get_supabase)):
     result = (
         sb.table("listings")
-        .select("id, raw_name, sku, price_usd, price_raw, currency, in_stock, last_seen_at, product_url, image_url, category_slug, shops(slug, name, url)")
+        .select("id, product_id, raw_name, sku, price_usd, price_raw, currency, in_stock, last_seen_at, product_url, image_url, category_slug, shops(slug, name, url)")
         .eq("id", listing_id)
         .maybe_single()
         .execute()

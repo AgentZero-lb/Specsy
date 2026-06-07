@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routers import listings, admin
+from api.routers import listings, admin, products
 
 app = FastAPI(title="Specsy API", version="0.1.0")
 
@@ -18,6 +18,7 @@ app.add_middleware(
 )
 
 app.include_router(listings.router, prefix="/listings", tags=["listings"])
+app.include_router(products.router, prefix="/products", tags=["products"])
 app.include_router(admin.router, prefix="/admin", tags=["admin"])
 
 

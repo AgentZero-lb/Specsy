@@ -184,7 +184,7 @@ create table match_queue (
     candidate_product_id uuid references products(id),
     similarity_score     float,
     status               text not null default 'pending',
-    -- 'pending' | 'confirmed' | 'rejected' | 'new_product'
+    -- 'pending' | 'confirmed' | 'rejected' | 'new_product' | 'superseded'
     reviewed_at          timestamptz,
     created_at           timestamptz not null default now()
 );

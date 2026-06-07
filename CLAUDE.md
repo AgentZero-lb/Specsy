@@ -24,27 +24,32 @@ GitHub: AgentZero-lb/Specsy (private)
 - Scope gate (`scraper/scope.py`) is shared by scrapers + DB cleanup — out-of-scope-by-title items get `category_slug = NULL` (hidden by API), never deleted
 
 ## Current status
-- Phase: **3 shops live + full frontend built; matching in progress; pre-deploy**
+- Phase: **3 shops live + full frontend built + hardened matching live; pre-deploy**
 - Schema: deployed to Supabase ✅
 - Shops live: PCandParts (WooCommerce) + Macrotronics (Shopify) + Ayoub Computers (BigCommerce) ✅
-- Listings: **~9,991 in-scope** across 24 categories (NULL-category rows hidden) ✅
+- Listings: **9,994 in-scope** across 24 categories (NULL-category rows hidden) ✅
 - price_snapshots: one row per listing per run — the ~1000-row cap bug is fixed ✅
 - Scope gate: title-based filter (`scope.py`) drops mis-filed accessories; `cleanup_scope.py` nulled existing rows ✅
-- Matching: deterministic `match.py` + embedding `match_vector.py` + Haiku `match_llm.py`
-  built + run across all 3 shops → **~3,596 matched listings (35%), 1,412 products,
-  1,401 multi-shop**; 2,263 gray-band pairs in `match_queue` for review. Admin QA
-  endpoints (`/admin/matches`, `/admin/match-queue`) + pages live. `listings.raw_specs`
-  (jsonb, migration 002) feeds the embedding/Haiku passes.
+- Matching: **LIVE — identity-based + fail-closed (see "Product matching strategy")**.
+  Old chip-level matcher produced ~414 false merges; replaced by `scraper/identity.py` strict
+  per-category identity + validated, reversible, atomic staged rebuild. Embedding/Haiku passes
+  demoted to queue-only candidate generators. Rebuild
+  `f6090a06-96c5-4715-881c-6a8d22ca24b5` is active: **1,025 matched listings (10.3%) /
+  462 products**, with 0 cross-brand/chip/multi-model/motherboard-variant groups; 76 groups
+  quarantined for review. `listings.raw_specs` (jsonb, migration 002) enriches identity.
 - Re-scrape safety: `runner.py` no longer writes `product_id` on upsert, so re-scrapes
   PRESERVE matches (previously every `--save` reset product_id → wiped matching).
-- FastAPI: live on :8000; added `sort` param + `last_seen_at` to listings ✅
+- FastAPI: live locally; added `sort`, `last_seen_at`, product comparison endpoint, and
+  paged admin product lookup (avoids Supabase's 1,000-row cap) ✅
 - Frontend: Next.js 16 built (home / browse / listing detail), wired to /listings API ✅
 - Deploy: `render.yaml` + `DEPLOY.md` ready; **not deployed yet** (backend must be hosted before the Vercel frontend) ⏳
-- Next action: finish matching across 3 shops → deploy backend (Render) → frontend (Vercel)
+- Next action: review quarantined groups / regenerate queue candidates, then deploy when ready.
 
 ## DB tables (all deployed)
 shops, categories, products, listings, price_snapshots,
 match_queue, product_aliases, exchange_rates, scrape_runs, builds
+- **`match_decisions` — migrations 003 + 004 applied** (reversible provenance + guarded
+  activation). Unknown/empty/duplicate staged runs fail before any mapping update.
 
 ## Shop 1: PCandParts — VERIFIED
 - Platform: WooCommerce
@@ -124,18 +129,70 @@ locks — and passive network cabling (patch cords, RJ45 connectors, cable rolls
 (keeps borderline-but-legit cheap tech). Shared by scrapers + `cleanup_scope.py` so live data
 and re-scrapes stay consistent. `python -m scraper.cleanup_scope [--apply]` nulls existing rows.
 
-## Product matching strategy (in order) — BUILT
-1. `match.py` — exact SKU across shops, then deterministic chip/model-code/name-key
-   union-find. No API, idempotent. `python -m scraper.match [--apply]`
-2. `match_vector.py` — Voyage `voyage-3` embeddings + cosine; high band auto-matches,
-   middle band → `match_queue`. Embeddings cached in OS temp.
-   `python -m scraper.match_vector [--apply --high H --mid M]`
-3. `match_llm.py` — `claude-haiku-4-5` judges embedding-flagged candidate pairs
-   (same product? y/n), unions confirmed. Verdicts cached. `python -m scraper.match_llm [--apply]`
-- Embedding/Haiku text = `raw_name` + `raw_specs` (Ayoub's custom fields enrich this).
-- Confirmed matches write to `product_aliases` (skip re-embedding next time).
-- All passes share `load_listings` / `_ensure_product` / `DSU` from `match.py`; all idempotent
-  (reuse existing products, refresh — not duplicate — the pending queue).
+## Product matching strategy — REBUILT & HARDENED (identity-based, fail-closed)
+The old matcher treated the *chipset* as GPU identity ("RTX 5070" → one product),
+producing ~414 suspect false merges (GPU 100%, laptop 85%, UPS 86%). Replaced with strict
+per-category identity + fail-closed validation + a reversible, atomic rebuild.
+
+- `scraper/identity.py` — pure, unit-tested. `identity_keys(category, raw_name, raw_specs,
+  sku) -> set[str]`: strict per-category keys (GPU = chip+AIB+variant+VRAM and/or full
+  manufacturer part-code; CPU = full model incl suffix; RAM = brand+ddr+capacity+kit+speed+
+  line; storage/monitor/psu = model code qualified by capacity/refresh/wattage; motherboard =
+  exact board code + DDR + WiFi + revision + product line; laptop/desktop = **exact**
+  CPU + RAM + SSD + GPU + family). Title-first, `raw_specs` fallback
+  (case-insensitive). Missing required attr → no key → stays unmatched (queue). `describe()`
+  + `title_spec_conflict()` for evidence/quarantine. **A false merge is worse than a miss.**
+- `scraper/match.py` — the ONLY auto-merge path. Pass 1 normalized cross-shop SKU (with
+  category+brand compatibility guard; same SKU diff brand/cat = conflict, not merged).
+  Pass 2 identity-key union-find. Then **every** completed group is VALIDATED (coherent
+  category/brand/chip/capacity/config + single model-code family + no name-conflict like
+  same MPN "Saga" vs "Surge" + no title↔spec conflict); failures are **quarantined**
+  (`reports/quarantined_groups.csv`), never written. Each accepted listing stores the exact
+  linking key(s). No `.delete()`; reset never deletes listings/snapshots/scrape_runs/products.
+- `scraper/match_vector.py` + `scraper/match_llm.py` — **candidate-generators only** (queue):
+  they may populate `match_queue`, never set `product_id` / create / merge products. LLM API
+  failures are never cached as rejections.
+- Old learned `product_aliases` are **quarantined** (source→'quarantined') on rebuild and not
+  reused (they came from the false-merge matcher); the API doesn't read aliases.
+- Tests: `cd backend && python tests/test_matching.py` (34, framework-free).
+- PostgREST pagination is mandatory for validation/cleanup reads over 1,000 rows. Staging
+  validation checks the exact listing set + product count; aliases and queue cleanup page fully.
+
+### Migration / apply / rollback (DDL is MANUAL in Supabase SQL editor)
+1. Migrations 003 + 004 are applied. Function execution is **revoked from
+   anon/authenticated, granted only to service_role**.
+2. Dry-run shadow rebuild (no writes): `cd backend && python -m scraper.match`
+   (`--reset` alone is still dry; shows the reset plan).
+3. Apply (staged + atomic): `cd backend && python -m scraper.match --reset --apply`
+   — creates fresh products, stages decisions (status='staged', rebuild_run_id), keeps
+   current mappings LIVE, validates, then flips atomically via `activate_rebuild()`.
+   Exports a backup CSV to `backend/backups/mapping_<ts>.csv` first.
+4. Rollback / recovery:
+   - whole rebuild: `python scripts/restore_mapping.py backups/mapping_<ts>.csv --apply`
+   - one bad product: `python scripts/unmatch.py --product <uuid> --apply --reviewer <you> --reason "<why>"`
+     (dry by default; reviewer+reason REQUIRED on apply; reverses decisions, un-links only
+     listings still pointing there, never deletes data).
+- Candidate-gen (optional, after a rebuild): `python -m scraper.match_vector --apply` /
+  `python -m scraper.match_llm --apply` → match_queue only.
+
+### Live rebuild stats (algo match-2026.06.07-identity-v3-motherboard)
+- in-scope 9,994 · **LIVE matched 1,025 (10.3%), 462 products** (1 SKU product,
+  461 identity_rule products). The old 3,596 mappings were replaced atomically.
+- ACCEPTED quality: **cross-brand 0, cross-chip 0, multi-model 0, motherboard-variant 0**,
+  SKU conflicts 0. Motherboard: 4 accepted products / 10 listings; DDR4/DDR5, WiFi,
+  revision, and product-line variants stay separate.
+- QUARANTINED (fail closed, → review): 76 groups / 184 listings (multi-model 39,
+  name-conflict 40, oversized 1; overlap). 2 title↔spec-conflicted listings excluded.
+- Decisions: 1,025 active, 0 staged; exact decision/listing/product parity verified.
+- Orphan accounting: 1,412 old products kept (un-linked, never deleted), 462 live fresh
+  products; 1,874 products total.
+- All 3,556 old aliases are quarantined. The 2,263 pre-rebuild pending queue candidates
+  referenced orphan products and are preserved as `superseded`; pending queue is now 0.
+- Safety verification: migration 004 rejects an unknown run without changing mappings;
+  `restore_mapping.py` successfully restored all 3,596 old links during recovery testing.
+- name-conflict is a deliberate **hard** quarantine (catches wrong-MPN like Pulsefire Saga/
+  Surge + size variants; also conservatively holds some divergent-wording same-product pairs
+  for review). Tunable via the `_DESCRIPTORS` list in `match.py` if higher recall is wanted.
 
 ## API endpoints (FastAPI, port 8000)
 Start: `cd backend && uvicorn api.main:app --port 8000`
@@ -144,18 +201,33 @@ Start: `cd backend && uvicorn api.main:app --port 8000`
   - `sort`: `name` (default) | `price_asc` | `price_desc`
   - response: `{ items, total, page, pages }`; ListingOut includes `last_seen_at`, `shop{slug,name,url}`
 - `GET /listings/categories` → 24 categories with counts (RPC `get_category_counts`)
-- `GET /listings/{id}`
+- `GET /listings/{id}` — ListingOut now also includes `product_id` (null = unmatched), the
+  detail page's matched/unmatched signal
+- `GET /products/{id}/listings` → `{ product{id,name,brand,category_slug,category_name,image_url},
+  listings[] }`. Canonical product + every linked listing, sorted in-stock-priced cheapest-first,
+  then out-of-stock priced, then Request-Price last. `product.image_url` = best image across the
+  listings (products store none); `brand` is usually null (`_ensure_product` doesn't set it).
+  Router: `api/routers/products.py`.
 - CORS: localhost:3000 + `allow_origin_regex` for `*.vercel.app`
 
 ## Frontend (built) → /frontend
 - Next.js 16 App Router, Tailwind v4 dark theme, Geist / Geist Mono fonts
 - Pages: `/` (hero + live price preview + GSAP pinned showcase + category bento + best-value),
   `/browse` (filter rail, infinite scroll, URL-synced filters, mobile bottom sheet),
-  `/listing/[id]` (scalable price-comparison panel + details table), `/build` (placeholder)
+  `/listing/[id]` (PCPartPicker-style product detail), `/build` (placeholder)
+- `/listing/[id]` (server component): fetches the listing, then if it's matched
+  (`product_id` set) fetches `GET /products/{id}/listings`. **Matched** → canonical product
+  shown once (hero image + name + brand chip when present) → "From $X · Save $Y" summary →
+  "Where to buy" = one row per shop (collapsed to each shop's best offer), ranked cheapest-first;
+  winner row gets a subtle indigo tint + "Cheapest" chip + primary CTA. **Unmatched / single-shop**
+  → clean single-shop view, no comparison. CTAs: "View Deal" (priced) / "Request Price" (links to
+  the shop page — no WhatsApp number in schema). Out-of-stock rows are muted. All page-specific
+  pieces live inline in `page.tsx` (server-rendered, no client JS).
 - Data: typed client in `lib/api.ts` → FastAPI; base URL from `NEXT_PUBLIC_API_URL` (default http://localhost:8000)
 - Images: `next.config.ts` remotePatterns allow `pcandparts.com` + `cdn.shopify.com`
 - Run: `cd frontend && npm run dev`
-- Note: detail page has no real specs/brand yet (listings aren't matched to products) — shows real fields only
+- Note: real per-shop prices/stock + cross-shop comparison are live; full technical spec tables
+  still pending (products.specs is empty until matching enriches it)
 
 ## Deployment (configured, NOT deployed)
 - Backend → Render: `render.yaml` (rootDir `backend`, `requirements-api.txt`, uvicorn, healthcheck `/health`).

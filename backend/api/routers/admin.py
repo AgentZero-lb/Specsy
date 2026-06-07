@@ -29,6 +29,22 @@ def _load_matched_listings(sb: Client) -> list[dict]:
     return rows
 
 
+def _load_products(sb: Client, product_ids: set[str]) -> dict[str, dict]:
+    products = {}
+    ids = sorted(product_ids)
+    for start in range(0, len(ids), 200):
+        rows = (
+            sb.table("products")
+            .select("id, name, category_id")
+            .in_("id", ids[start:start + 200])
+            .execute()
+            .data
+            or []
+        )
+        products.update({p["id"]: p for p in rows})
+    return products
+
+
 @router.get("/matches")
 def list_matches(
     limit: int = Query(200, ge=1, le=1000),
@@ -37,12 +53,8 @@ def list_matches(
 ):
     cats = {c["id"]: c["name"] for c in sb.table("categories").select("id, name").execute().data}
     shops = {s["id"]: s["name"] for s in sb.table("shops").select("id, name").execute().data}
-    prods = {
-        p["id"]: p
-        for p in sb.table("products").select("id, name, category_id").execute().data
-    }
-
     rows = _load_matched_listings(sb)
+    prods = _load_products(sb, {r["product_id"] for r in rows})
     by_product: dict[str, list[dict]] = defaultdict(list)
     for r in rows:
         by_product[r["product_id"]].append(r)

@@ -3,6 +3,7 @@ import type {
   Listing,
   ListingQuery,
   ListingsPage,
+  ProductDetail,
 } from "./types";
 
 export const API_URL =
@@ -40,6 +41,20 @@ export async function getListing(
   const res = await fetch(`${API_URL}/listings/${id}`, init);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`getListing ${res.status}`);
+  return res.json();
+}
+
+/**
+ * GET /products/{id}/listings — a canonical product + all linked shop listings,
+ * ranked cheapest first. Returns null on 404 (product gone / not matched).
+ */
+export async function getProductListings(
+  productId: string,
+  init?: RequestInit,
+): Promise<ProductDetail | null> {
+  const res = await fetch(`${API_URL}/products/${productId}/listings`, init);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`getProductListings ${res.status}`);
   return res.json();
 }
 
