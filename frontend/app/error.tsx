@@ -5,10 +5,10 @@ import { buttonVariants } from "@/components/ui/button";
 
 export default function ErrorPage({
   error,
-  unstable_retry,
+  reset,
 }: {
   error: Error & { digest?: string };
-  unstable_retry: () => void;
+  reset: () => void;
 }) {
   useEffect(() => {
     console.error(error);
@@ -24,7 +24,7 @@ export default function ErrorPage({
       </p>
       <button
         type="button"
-        onClick={() => unstable_retry()}
+        onClick={() => reset()}
         className={buttonVariants({ variant: "primary" })}
       >
         Try again
